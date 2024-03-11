@@ -12,13 +12,28 @@ My own implementation of many commonly used math functions, including floating p
 
 **APPROXIMATION METHODS**
 
-LARGE UPDATE COMING SOON (Spline interpolation, Newton Polynomials with Chebyshev nodes)
+This file has undergone a lot of changes, and I will be detailing the journey I took below.
+
+1. Taylor Series: You need to start somewhere, and this is the most obvious starting point. They work, but they are quite slow, and only work over a very small area. The error is not great unless you use a high order polynomial, so I started looking for something better.
+
+2. Pade Approximants: Basically, taylor series but better. In terms of precision, you really can't complain. An order 5-7 pade approximant should fulfill any precision requirement you have, but the limiting problem is that they are really slow. 2n multiplications atleast (probably a bit more), and a division cause this method to not be ideal. For a long time though, these were used in the high precision implementation of each function that needed to be approximated. Can we get faster?
+
+3. Lagrange Polynomials: These are fast, and maybe the most well known polynomial approximation method. They will interpolate the function at the points you describe, but the problem is that they don't do a very good job of describing the functions behavior. They don't take into account any of the functions derivatives, and as a result the error term outside the interpolation points is relatively high. Is there something more precise?
+
+4. Newton Polynomials: Now we are really getting somewhere! These are fast to evaluate, and really quite precise. Unfortunately, you can't really get arbitrary precision with these, but they get the job done. Additionally, if you have some kind of iterative refinement algorithm (Newton-Raphson for example), these can be extremely powerful. After some numerical testing, I did not manage to make these as good as the in built C functions though, so the search continues.
+
+5. Spline interpolation: When trying to approximate a non-polynomial, we should assume that the function does not look like a polynomial on a large scale, obviously. However, on a small scale, a smooth function looks pretty similar to a polynomial. This is the intuition behind spline interpolation, which splits the interpolated function into different sections called "splines", and then fits a polynomial (usually cubic) to that small section. The final piecewise function is determined such that it is continuous (C0), the first derivatives of each spline are equal to each other at their intersection points (C1), and that the second derivatives are equal at each point (C2). Additionally, this library uses a clamped spline, because we know information about the derivative of each interpolated function. Splines are more general though, and if the interpolated function is unknown or not differentiable at the end points, we can use a natural spline instead. Spline interpolation is extremely powerful, however the runtime is not as good as you might expect. While you do only need to evaluate a cubic (3 multiplications), you also need to figure out which spline to use. This is a nontrivial task, and the best implementation I could find was a reduced binary search, as seen in the code (I split first on the exponent in the IEE754 format to avoid bsearch in 7 cases). Splines are precise, and they are fast, so are we done? Not quite! The C library still outperforms on every function, so there still must be something left to find.
+
+6. Chebyshev Polynomials: To put it plainly, these are cracked. The chebyshev polynomials will find you the BEST interpolating polynomial for any function. If you want fast runtime, cut the order down to like 5-6. If you need high precision (that is implemented here in the code), go for order 12-13. If you need even higher precision, go for one iteration of Newton-Raphson (although on exp2 it turned out the original guess was actually better lol...). Talking more precisely about the precision, log2 with one iteration of newton raphson can go digit for digit with the C library no matter what the input number is. Exp2 performs slightly worse, owing to the fact that you can't newton-raphson it (not sure why this is), but it is still far better than any of the previous methods, barring some ungodly high order pade approximant (the tradeoff being that these are fast to compute). 
+
+7. Newton-Raphson: this is not an approximation method but I have mentioned it previously. It is one of many iterative refinement algorithms, that can turn a pretty good guess into a really good one. There are other possible methods to do this (Steffensen, bisection, secant etc.) but this is the one I am using at the moment, because it avoid divisions entirely for the functions I am using it on. I will experiment more with these in the future.
+
+**Generator/Helper Methods**
+1. Gauss Elimination methods: Pretty self explanatory, they can output the solution for any nxn matrix, if it exists. They aren't super powerful and probably don't handle edge cases that well as I haven't built them for heavy use, but if you know that your system can be solved these can get the job done. Also, as written in the comments, you can perform matrix inversion with these
+
+2. Spline maker: Generates a series of spline polynomials for any input function, if you want to use this method.
+
+3. Chebyshev maker: Generates a chebyshev polynomial for any function of a specified order. Make sure you plot the function to see how good it is because in my experience higher order is not always better.
 
 
-As of now, the approximation techniques are not very sophisticated. The comments in the code explain per function exactly what I am doing, but I will list the recurring ones below:
 
-1. Taylor Series. I mostly make use of Taylor series when the function I am approximating has a very small domain that is also near 0 like sin(x) (as every point can be transformed to a value between 0 and pi/2), or 2^x (as the integral part of an exponent can be computed with a bit shift directly). Because the domain we need to approximate is relatively small for these functions, the amount of operations needed in the taylor series is low (6 for sin(x) and 10 for 2^x). As a result, while there are definitely better approximation methods, taylor series loses very little time over them.
-
-2. Newton's Method. I make use of Newton's method to improve imprecise guesses which can be computed really quickly (especially in my sqrt and floating point division calculations). At most only 4 iterations need to be computed to achieve 13 digits worth of accuracy, so my floating point division method for example happens very quickly.
-
-3. Linear approximations. Useful for a quick approximation of log_2(x) or exp2 if precision is not needed, as seen in the code.
