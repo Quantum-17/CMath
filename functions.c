@@ -295,43 +295,31 @@ int mod(int x, int m) {
     return x - m*intDiv(x,m);
 }
 
-//EXTREMELY UNOPTIMIZED ATM, new approximations coming soon
-double sin(double a) {
+double legendreSIN(double arg) {
     double sol;
-    //normalization to put all numbers inside [0,pi/2]
-    int multiple = doubleIntDiv(a, 0.5*pi);
-    double pos = a - multiple*0.5*pi;
-    //checks if a mod pi >= pi/2 and adjusts position accordingly
-    if(a - (pi*(int)(0.5*multiple)) >= 0.5*pi) {
-        pos = 0.5*pi - pos;
+  //arg in [0,pi/2]
+    int sign1 = -(arg < 0) + !(arg < 0);
+    arg = arg*sign1;
+    int div = (int)(M_2_PI*arg);
+    double argNorm = arg-div*M_PI_2;
+    div = div & 3;
+    int sign2 = -(div >> 1) + !(div >> 1);
+    argNorm = !(div & 1)*argNorm + (div & 1)*(M_PI_2-argNorm);
+    if(argNorm > M_PI_4) {
+        //cosine
+        argNorm = M_PI/2 - argNorm;
+        double arg2 = argNorm*argNorm;
+        double arg4 = arg2*arg2;
+        double arg8 = arg4*arg4;
+        sol=0.99999999999999999899033913768707172-0.49999999999999986265716765799256*arg2+0.0416666666666636214084012688540*arg4-0.001388888888863299470388324357*arg2*arg4+0.000024801587196434694834646645*arg8-2.7557295838991412226509e-7*arg8*arg2+2.087388337742744569003e-9*arg8*arg4-1.1287128526390882751e-11*arg8*arg4*arg2;
+    } else {
+        //sine
+        double arg2 = argNorm*argNorm;
+        double arg4 = arg2*arg2;
+        double arg8 = arg4*arg4;
+        sol=argNorm*(0.9999999999999994995312825130903195-0.166666666666646809009809776993015*arg2+0.00833333333310686889627461111946*arg4-0.0001984126972797658544558330799*arg4*arg2+2.7557290247850414650824156e-6*arg8-2.50481517673677006748711e-8*arg8*arg2+1.5784385437304515164659e-10*arg8*arg4);
     }
-    //checks if a mod 2pi >= pi and adjusts position accordingly
-    if(a - (2*pi*(int)(0.25*multiple)) >= pi) {
-        pos = -pos;
-    }
-    //taylor sine approx from [0,pi/2]
-    double posSquare = pos*pos;
-    sol = pos;
-    double cur = pos;
-    //contains [1/2*3, 1/4*5, 1/6*7, 1/8*9, 1/10*11, 1/12*13], which will give the taylor series denominators when multiplied in loop
-    double divs[6] = {0.166666666666, 0.05, 0.0238095238095, 0.013888888888888, 0.00909090909090909, 0.00641025641025};
-    for(int i = 3; i < 15; i += 2) {
-        //array index = floor(i/2) - 1, which can be achieved with a right shift to avoid a division call
-        cur = -cur*posSquare*divs[(i >> 1)-1];
-        sol += cur;
-//        printf("%f\n",sol);
-    }
-    return sol;
-}
-
-//double cos(double a) {
-//    return sin(0.5*pi - a);
-//}
-
-double tan(double x) {
-    double sine = sin(x);
-    //make use of the fact that cos(x) = sqrt(1-sin^2x) to avoid an extra sine computation (sqrt faster than sine)
-    return sine*divX(sqrt(1-sine*sine));
+    return sol*sign1*sign2;
 }
 
 long long choose(long long a, long long b) {
