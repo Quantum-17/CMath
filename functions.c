@@ -297,29 +297,31 @@ int mod(int x, int m) {
 
 double legendreSIN(double arg) {
     double sol;
-  //arg in [0,pi/2]
-    int sign1 = -(arg < 0) + !(arg < 0);
-    arg = arg*sign1;
-    int div = (int)(M_2_PI*arg);
-    double argNorm = arg-div*M_PI_2;
+    double div1 = (M_4_PI*arg);
+    //floor
+    int div = (int)div1 - (div1 < (int)div1);
+    double argNorm = arg-div*M_PI_4;
+    div = div & 7;
+    if (div & 1) {
+        argNorm = M_PI_4 - argNorm;
+    }
+    int sign = (div) >> 2;
     div = div & 3;
-    int sign2 = -(div >> 1) + !(div >> 1);
-    argNorm = !(div & 1)*argNorm + (div & 1)*(M_PI_2-argNorm);
-    if(argNorm > M_PI_4) {
-        //cosine
-        argNorm = M_PI/2 - argNorm;
+    int doCOS = ((div & 1) ^ (div>>1));
+    if(doCOS) {
         double arg2 = argNorm*argNorm;
         double arg4 = arg2*arg2;
         double arg8 = arg4*arg4;
         sol=0.99999999999999999899033913768707172-0.49999999999999986265716765799256*arg2+0.0416666666666636214084012688540*arg4-0.001388888888863299470388324357*arg2*arg4+0.000024801587196434694834646645*arg8-2.7557295838991412226509e-7*arg8*arg2+2.087388337742744569003e-9*arg8*arg4-1.1287128526390882751e-11*arg8*arg4*arg2;
     } else {
-        //sine
         double arg2 = argNorm*argNorm;
         double arg4 = arg2*arg2;
         double arg8 = arg4*arg4;
         sol=argNorm*(0.9999999999999994995312825130903195-0.166666666666646809009809776993015*arg2+0.00833333333310686889627461111946*arg4-0.0001984126972797658544558330799*arg4*arg2+2.7557290247850414650824156e-6*arg8-2.50481517673677006748711e-8*arg8*arg2+1.5784385437304515164659e-10*arg8*arg4);
     }
-    return sol*sign1*sign2;
+    if(sign) {
+        return -sol;
+    } else return sol;
 }
 
 long long choose(long long a, long long b) {
