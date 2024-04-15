@@ -302,12 +302,11 @@ double legendreSIN(double arg) {
     int div = (int)div1 - (div1 < (int)div1);
     double argNorm = arg-div*M_PI_4;
     div = div & 7;
+    int sign = (div) >> 2;
     if (div & 1) {
         argNorm = M_PI_4 - argNorm;
     }
-    int sign = (div) >> 2;
-    div = div & 3;
-    int doCOS = ((div & 1) ^ (div>>1));
+    int doCOS = ((div & 1) ^ ((div & 2)>>1));
     if(doCOS) {
         double arg2 = argNorm*argNorm;
         double arg4 = arg2*arg2;
